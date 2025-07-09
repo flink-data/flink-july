@@ -26,9 +26,27 @@ public class MapFilterExercise {
             this.name = name;
             this.age = age;
         }
+
     }
     public static class DetailUser{
+        String name;
+        Integer age;
+        String tag;
 
+        public DetailUser(String name, Integer age, String tag) {
+            this.name = name;
+            this.age = age;
+            this.tag = tag;
+        }
+
+        @Override
+        public String toString() {
+            return "DetailUser{" +
+                    "name='" + name + '\'' +
+                    ", age=" + age +
+                    ", tag='" + tag + '\'' +
+                    '}';
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -41,13 +59,22 @@ public class MapFilterExercise {
         DataStream<DetailUser> users = stream.map(new MapFunction<User, DetailUser>() {
             @Override
             public DetailUser map(User value) throws Exception {
-                return null;
+                int realAge = 0;
+                if (value.age != null) {
+                    realAge = value.age;
+                }
+                String upperName = value.name.toUpperCase();
+                String tag = "adult";
+                if (realAge < 18) {
+                    tag = "minor";
+                }
+                return new DetailUser(upperName, realAge, tag);
             }
         });
         DataStream<DetailUser> filterdUsers = users.filter(new FilterFunction<DetailUser>() {
             @Override
             public boolean filter(DetailUser value) throws Exception {
-                return false;
+                return value.tag.equals("adult");
             }
         });
         filterdUsers.print();

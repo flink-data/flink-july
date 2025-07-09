@@ -6,13 +6,16 @@ public class Event {
     public String user;
     public Long timestamp;
 
-    public Event(String url, String user, Long timestamp) {
+
+    public Event(String user, String url, Long timestamp) {
         this.url = url;
         this.user = user;
         this.timestamp = timestamp;
     }
 
-    @Override
+    public Event() {
+    }
+
     public String toString() {
         return "Event{" +
                 "url='" + url + '\'' +
