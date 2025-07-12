@@ -7,6 +7,9 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class ReduceHomework {
 
     // 1. Each User's unique URL,  First step reduce
@@ -30,8 +33,9 @@ public class ReduceHomework {
         SingleOutputStreamOperator<UserVisitSite> userUrlSet = streamSource.map(new MapFunction<Event, UserVisitSite>() {
             @Override
             public UserVisitSite map(Event value) throws Exception {
-                //TODO
-                return null;
+                Set<String> set = new HashSet<>();
+                set.add(value.url);
+                return new UserVisitSite(set, value.user);
             }
         });
 
@@ -39,19 +43,23 @@ public class ReduceHomework {
         SingleOutputStreamOperator<UserVisitSite> urlCountPerUSer = userUrlSet.keyBy(value -> value.user).reduce(new ReduceFunction<UserVisitSite>() {
             @Override
             public UserVisitSite reduce(UserVisitSite value1, UserVisitSite value2) throws Exception {
-                //TODO
-                return null;
+                value1.urlSet.addAll(value2.urlSet);
+                return value1;
             }
         });
+
+        //urlCountPerUSer.print();
 
         SingleOutputStreamOperator<UserVisitSite> topCount = urlCountPerUSer.keyBy(value -> "global")
                 .reduce(new ReduceFunction<UserVisitSite>() {
                     @Override
                     public UserVisitSite reduce(UserVisitSite value1, UserVisitSite value2) throws Exception {
-                        return null;
+                       if (value1.urlSet.size() >= value2.urlSet.size()) {
+                           return value1;
+                       }
+                       return value2;
                     }
                 });
-        urlCountPerUSer.print();
         topCount.print();
         environment.execute();
     }
