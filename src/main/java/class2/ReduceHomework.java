@@ -47,9 +47,7 @@ public class ReduceHomework {
                 return value1;
             }
         });
-
-        //urlCountPerUSer.print();
-
+        urlCountPerUSer.print();
         SingleOutputStreamOperator<UserVisitSite> topCount = urlCountPerUSer.keyBy(value -> "global")
                 .reduce(new ReduceFunction<UserVisitSite>() {
                     @Override
