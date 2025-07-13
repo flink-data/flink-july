@@ -1,4 +1,4 @@
-package class2;
+package class3;
 
 import class1.ClickSource;
 import class1.Event;
