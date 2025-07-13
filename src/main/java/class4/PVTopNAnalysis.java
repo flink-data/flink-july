@@ -1,17 +1,16 @@
 package class4;
 
-import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -25,26 +24,19 @@ public class PVTopNAnalysis {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setParallelism(1);
-        environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         DataStream<UserBehavior> stream = environment.readTextFile("C:\\Users\\admin\\IdeaProjects\\flink-july\\src\\main\\resources\\UserBehavior.csv")
-                .map(new MapFunction<String, UserBehavior>() {
-                    @Override
-                    public UserBehavior map(String value) throws Exception {
-                        String[] arr = value.split(",");
-                        return new UserBehavior(arr[0], arr[1], arr[2], arr[3], Long.parseLong(arr[4]) * 1000L);
-                    }
+                .map((MapFunction<String, UserBehavior>) value -> {
+                    String[] arr = value.split(",");
+                    return new UserBehavior(arr[0], arr[1], arr[2], arr[3], Long.parseLong(arr[4]) * 1000L);
                 }).filter(data -> data.behavior.equals("pv"))
-                .assignTimestampsAndWatermarks(WatermarkStrategy.<UserBehavior>forMonotonousTimestamps()
-                        .withTimestampAssigner(new SerializableTimestampAssigner<UserBehavior>() {
-                            @Override
-                            public long extractTimestamp(UserBehavior element, long recordTimestamp) {
-                                return element.timestamp;
-                            }
-                        })
+                .assignTimestampsAndWatermarks(WatermarkStrategy.<UserBehavior>forBoundedOutOfOrderness(Duration.ofSeconds(1))
+                        .withTimestampAssigner((event, recordTime) -> event.timestamp)
                 );
         stream.keyBy(r -> r.itemId)
-                .timeWindow(Time.hours(1), Time.minutes(5))
+                .window(TumblingEventTimeWindows.of(Time.minutes(10)))
                 .aggregate(new CountAgg(), new WindowResult())
+                .keyBy(data -> data.windowEnd)
+                .process(new TopNItem(5))
                 .print();
         environment.execute();
     }
@@ -84,7 +76,6 @@ public class PVTopNAnalysis {
             });
 
             StringBuilder result = new StringBuilder();
-            System.out.println(result.toString());
             result.append("=========================\n");
             result.append("time: ").append(new Timestamp(timestamp)).append("\n");
             for (int i = 0; i < this.threshold; i++) {
@@ -105,7 +96,7 @@ public class PVTopNAnalysis {
         public void process(String s,
                             ProcessWindowFunction<Long, ItemViewCount, String, TimeWindow>.Context context,
                             Iterable<Long> elements, Collector<ItemViewCount> out) throws Exception {
-            //out.collect(new ItemViewCount(s, context.window().getEnd(), elements.iterator().next()));
+            out.collect(new ItemViewCount(s, context.window().getEnd(), elements.iterator().next()));
         }
     }
 
@@ -128,7 +119,7 @@ public class PVTopNAnalysis {
 
         @Override
         public Long merge(Long a, Long b) {
-            return null;
+            return a + b;
         }
     }
 }
