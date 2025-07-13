@@ -11,7 +11,7 @@ public class UserBehavior {
     public UserBehavior() {
     }
 
-    public UserBehavior(String userId, String itemId, String behavior, String categoryId, Long timestamp) {
+    public UserBehavior(String userId, String itemId, String categoryId, String behavior, Long timestamp) {
         this.userId = userId;
         this.itemId = itemId;
         this.behavior = behavior;
